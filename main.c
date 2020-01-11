@@ -527,6 +527,7 @@ void * process_new_player_thread(void * ptr)
     printf("Starting new thread for client with socket desc: %d\n", conn->sock_desc);
 
     while (GAME_IN_PROCESS == 0) {
+        printf("Waiting for a message....\n");
         read(conn->sock_desc, &len, sizeof(int));
 
         if (len > 0) {
@@ -537,16 +538,20 @@ void * process_new_player_thread(void * ptr)
             if (buffer[0] == '0') {
                 printf("JOIN GAME message is gotten from client with socket desc: %d\n", conn->sock_desc);
                 process_JOIN_GAME_MSG(client, buffer);
+                printf("Client with sock desc: %d. Joined Game. Clients count %d. \n", conn->sock_desc, client_count);
             }
             free(buffer);
+            printf("Buffer is empty!\n");
         }
     }
 
+
+    printf("Client's thread is over.\n");
     close(conn->sock_desc);
     free(conn);
     printf("\n");
     pthread_exit(0);
-    printf("Client's thread is over.\n");
+
 }
 
 void send_LOBBY_INFO_MSG(struct client *client)
