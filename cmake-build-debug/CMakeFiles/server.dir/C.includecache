@@ -1,0 +1,40 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/vk/CLionProjects/server/constants.h
+
+/home/vk/CLionProjects/server/main.c
+stdio.h
+-
+pthread.h
+-
+sys/socket.h
+-
+stdlib.h
+-
+arpa/inet.h
+-
+string.h
+-
+netdb.h
+-
+unistd.h
+-
+main.h
+/home/vk/CLionProjects/server/main.h
+constants.h
+/home/vk/CLionProjects/server/constants.h
+stdio.h
+-
+
+/home/vk/CLionProjects/server/main.h
+sys/socket.h
+-
+constants.h
+/home/vk/CLionProjects/server/constants.h
+

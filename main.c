@@ -6,7 +6,6 @@
 #include <string.h>
 #include <netdb.h>
 #include <unistd.h>
-#include <winsock.h>
 #include "main.h"
 #include "constants.h"
 #include <stdio.h>
@@ -172,7 +171,7 @@ void run()
 
     while (GAME_IN_PROCESS == 0)
     {
-        printf("Waiting for game to start.");
+       // printf("Waiting for game to start.");
     }
 
     start_game();
@@ -478,11 +477,12 @@ int name_exist(char* name)
 
 void process_JOIN_GAME_MSG(struct client *client, char *buffer)
 {
-    if (name_exist(buffer) == 1)
-    {
-        send_USERNAME_TAKEN_MSG(client->connection);
-        return;
-    }
+    printf("process Join game msg");
+  //  if (name_exist(buffer) == 1) -- Segfault
+  //  {
+  //      send_USERNAME_TAKEN_MSG(client->connection);
+  //      return;
+  //  }
 
     client -> active = 1;
     client -> segvards = (char *)malloc(sizeof(buffer));
@@ -505,6 +505,7 @@ void send_USERNAME_TAKEN_MSG(connection_t * connection)
 
 void * process_new_player_thread(void * ptr)
 {
+    printf("here_start_new_thread\n");
     char * buffer;
     int len = 0;
     connection_t * conn;
@@ -516,13 +517,14 @@ void * process_new_player_thread(void * ptr)
 
     while (GAME_IN_PROCESS == 0) {
         read(conn->sock_desc, &len, sizeof(int));
-
+        printf("here\n");
         if (len > 0) {
             buffer = (char *) malloc((len + 1) * sizeof(char));
             buffer[len] = 0;
             read(conn->sock_desc, buffer, len);
 
             if (buffer[0] == '0') {
+                printf("here0\n");
                 process_JOIN_GAME_MSG(client, buffer);
             }
 
@@ -566,10 +568,12 @@ void send_LOBBY_INFO_MSG(struct client *client)
     //"2<%d>{%s}"
     sprintf(msg_buffer, MSG_LOBBY_INFO, client_count, list_of_players);
 
-    printf("Message to send: %s\n", msg_buffer);
+    printf("Message to send: %s, on socket %d\n", msg_buffer, client->connection->sock_desc);
 
     send_MSG(conn, msg_buffer);
 
     free(msg_buffer);
     free(list_of_players);
+
+    printf("done");
 }
