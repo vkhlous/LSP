@@ -7,6 +7,6 @@
 
 //int name_exist(char* name);
 //void process_JOIN_GAME_MSG(struct client *client, char *buffer);
-//void * process(void * ptr);
+//void * process_new_player_thread(void * ptr);
 
 #endif //SERVER_CLIENTS_THREAD_H
