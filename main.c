@@ -32,6 +32,7 @@ void read_send_game_MAP();
 void send_MAP_ROW_MSG(struct client * client, char *line, int line_nr);
 void send_MAP_line(char *map_line, int line_nr);
 void add_MAP_line_to_array(char *map_line, int line_nr);
+void set_games_countdown();
 
 void send_game_update();
 
@@ -168,6 +169,13 @@ void run()
     pthread_create(&thread, 0, listen_for_new_players, NULL);
     pthread_detach(thread);
 
+    while (client_count < 2)
+    {
+
+    }
+
+    set_games_countdown();
+
     while (GAME_IN_PROCESS == 0)
     {
        // printf("Waiting for game to start.");
@@ -238,26 +246,12 @@ void send_MSG(connection_t * connection, char * msg_buffer)
     send(connection->sock_desc, msg_buffer, sizeof(msg_buffer), 0);
 }
 
-/* start a new thread but do not wait for it */
-void register_new_player(connection_t * connection)
+void set_games_countdown()
 {
-    struct client * new_player;
-    pthread_t thread;
     pthread_t countdown_thread;
-
-    client_count++;
-
-    new_player = &players[client_count - 1];
-    new_player -> connection = connection;
-
-    printf("Connected to the client with socket descriptor\n");
-    printf("Client: on socket %d.\n", connection -> sock_desc);
 
     if (client_count >= 2 && client_count < 8)
     {
-        pthread_create(&thread, 0, process_new_player_thread, (void *) new_player);
-        pthread_join(thread, NULL);
-
         if (COUNTDOWN_STARTED == 0)
         {
             COUNTDOWN_STARTED = 1;
@@ -279,14 +273,26 @@ void register_new_player(connection_t * connection)
     {
         GAME_IN_PROCESS = 1;
     }
-    else
-    {
-        pthread_create(&thread, 0, process_new_player_thread, (void *) new_player);
-        pthread_detach(thread);
-    }
 }
 
-void  send_updated_LOBBY_INFO(
+/* start a new thread but do not wait for it */
+void register_new_player(connection_t * connection)
+{
+    struct client * new_player;
+    pthread_t thread;
+    pthread_t countdown_thread;
+
+    new_player = &players[client_count - 1];
+    new_player -> connection = connection;
+
+    printf("Connected to the client with socket descriptor\n");
+    printf("Client: on socket %d.\n", connection -> sock_desc);
+
+    pthread_create(&thread, 0, process_new_player_thread, (void *) new_player);
+    pthread_detach(thread);
+}
+
+void  send_updated_LOBBY_INFO()
 {
     printf("Sending updated LOBBY_INFO_MSG to each active player...\n");
     int i = 1;
@@ -498,6 +504,9 @@ void process_JOIN_GAME_MSG(struct client *client, char *buffer)
 
     client -> active = 1;
     client -> segvards = (char *)malloc(sizeof(buffer));
+
+    client_count++;
+
     strcpy(client -> segvards, buffer);
 
     send_LOBBY_INFO_MSG(client);
@@ -548,13 +557,11 @@ void * process_new_player_thread(void * ptr)
         }
    // }
 
-
     printf("Client's thread is over.\n");
     close(conn->sock_desc);
     free(conn);
     printf("\n");
     pthread_exit(0);
-
 }
 
 void send_LOBBY_INFO_MSG(struct client *client)
