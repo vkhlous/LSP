@@ -41,6 +41,8 @@ void send_first_GAME_UPDATE_MSG(struct client *client);
 
 void change_smth(struct client *pClient);
 
+void smth();
+
 int main(int argc, char* argv[])
 {
 
@@ -125,24 +127,24 @@ void process_arg(int argc, char* argv[])
 
 void initialize_players()
 {
-    int i = 1;
-    for (; i <= PLAYERS_COUNT; i++)
+    int i = 0;
+    for (; i < PLAYERS_COUNT; i++)
     {
-        if (i == A_CLIENT_NR)
+        if (i+1 == A_CLIENT_NR)
         {
             players[i].symbol = A_CLIENT_CHAR;
             players[i].active = 0;
             players[i].x = A_CLIENT_X;
             players[i].y = A_CLIENT_Y;
         }
-        else if (i == B_CLIENT_NR)
+        else if (i+1 == B_CLIENT_NR)
         {
             players[i].symbol = B_CLIENT_CHAR;
             players[i].active = 0;
             players[i].x = B_CLIENT_X;
             players[i].y = B_CLIENT_Y;
         }
-        else if (i == C_CLIENT_NR)
+        else if (i+1 == C_CLIENT_NR)
         {
             players[i].symbol = C_CLIENT_CHAR;
             players[i].active = 0;
@@ -150,7 +152,7 @@ void initialize_players()
             players[i].y = C_CLIENT_Y;
 
         }
-        else if (i == D_CLIENT_NR)
+        else if (i+1 == D_CLIENT_NR)
         {
             players[i].symbol = D_CLIENT_CHAR;
             players[i].active = 0;
@@ -242,7 +244,8 @@ void * listen_for_new_players(void * ptr)
             } else {
                 printf("Registering new player...");
                 register_new_player(connection);
-                printf("Client name4  %s\n",players[1].segvards); //TODO
+                //smth();
+                printf("Client name4  %s, %d\n",players[0].segvards, players[0].active); //TODO
             }
         }
     }
@@ -250,6 +253,15 @@ void * listen_for_new_players(void * ptr)
     printf("Liste for new players thread oover.\n");
     printf("\n");
     pthread_exit(0);
+}
+
+void smth() {
+    players[0].active = 1;
+    players[0].segvards = (char *)malloc(sizeof("name"));
+
+    //strcpy( players[client_nr].segvards, buffer);
+    players[0].segvards = strdup("name");
+
 }
 
 void send_GAME_IN_PROCESS_MSG(connection_t * connection)
@@ -310,7 +322,7 @@ void set_games_countdown()
 /* start a new thread but do not wait for it */
 void register_new_player(connection_t * connection)
 {
-   // struct client * new_player;
+    struct client * new_player;
     pthread_t thread;
     pthread_t countdown_thread;
 
@@ -324,6 +336,11 @@ void register_new_player(connection_t * connection)
     pthread_create(&thread, 0, process_new_player_thread, (void *) client_nr);
     pthread_join(thread, NULL); // TODO!
     printf("Client name3 %s\n",players[client_nr].segvards);
+    players[0].active = 1;
+    players[0].segvards = (char *)malloc(sizeof("My name"));
+
+    //strcpy( players[client_nr].segvards, buffer);
+    players[0].segvards = strdup("My name");
 }
 
 void  send_updated_LOBBY_INFO()
@@ -344,7 +361,7 @@ void start_game()
 {
     printf("Starting game!\n");
 
-    int i = 1;
+    int i = 0;
     for (; i <= PLAYERS_COUNT; i++)
     {
         printf("I: %d\n", i);
@@ -480,7 +497,7 @@ void send_MAP_ROW_MSG(struct client * client, char *line, int line_nr)
 
 void send_GAME_START_MSG(struct client * client)
 {
-    printf("SEND GAMESTART MSG START");
+    printf("SEND GAMESTART MSG START\n");
     char* msg_buffer = NULL;
     char* list_of_players = NULL;
     connection_t * conn;
@@ -505,6 +522,11 @@ void send_GAME_START_MSG(struct client * client)
     sprintf(msg_buffer, MSG_GAME_START, client_count, list_of_players, MAP_W, MAP_H);
 
     printf("Message to send: %s\n", msg_buffer);
+
+    if (conn == NULL)
+    {
+        printf("Connection is null. GAME START MSG");
+    }
 
     send_MSG(conn, msg_buffer);
 
@@ -544,7 +566,8 @@ void process_JOIN_GAME_MSG(int client_nr, char *buffer)
     players[client_nr].active = 1;
     players[client_nr].segvards = (char *)malloc(sizeof(buffer));
 
-    strcpy( players[client_nr].segvards, buffer);
+    //strcpy( players[client_nr].segvards, buffer);
+    players[client_nr].segvards = strdup(buffer);
 
     send_LOBBY_INFO_MSG(client_nr);
     printf("process_JOIN_GAME_MSG: END\n");
