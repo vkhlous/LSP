@@ -27,10 +27,10 @@ void send_MSG(connection_t * connection, char * msg_buffer);
 void send_USERNAME_TAKEN_MSG(connection_t * connection);
 void start_game();
 void * start_countdown(void * ptr);
-void send_GAME_START_MSG(struct client * client);
+void send_GAME_START_MSG(int client_nr);
 void send_updated_LOBBY_INFO();
 void read_send_game_MAP();
-void send_MAP_ROW_MSG(struct client * client, char *line, int line_nr);
+void send_MAP_ROW_MSG(int client_nr, char *line, int line_nr);
 void send_MAP_line(char *map_line, int line_nr);
 void add_MAP_line_to_array(char *map_line, int line_nr);
 void set_games_countdown();
@@ -282,6 +282,7 @@ void send_MSG(connection_t * connection, char * msg_buffer)
 {
     int len;
 
+    printf("send_MSG START");
     printf("send_MSG: Message to send: %s on socket\n", msg_buffer, connection->sock_desc);
 
     len = strlen(msg_buffer);
@@ -325,11 +326,16 @@ void register_new_player(connection_t * connection)
     struct client * new_player;
     pthread_t thread;
     pthread_t countdown_thread;
+    int client_nr;
 
     printf("Connected to the client with socket descriptor\n");
     printf("Client: on socket %d.\n", connection -> sock_desc);
 
-    int client_nr = client_count - 1;
+    if (client_count != 0) {
+        client_nr = client_count - 1;
+    } else {
+        client_nr = 0;
+    }
 
     players[client_nr].connection = connection;
 
@@ -369,7 +375,7 @@ void start_game()
         if (players[i].active == 1)
         {
             printf("PRINT START GAME\n");
-            send_GAME_START_MSG(&players[i]);
+            send_GAME_START_MSG(i);
         }
     }
 
@@ -472,18 +478,19 @@ void send_MAP_line(char *map_line, int line_nr)
     {
         if (players[i].active == 1)
         {
-            send_MAP_ROW_MSG(&players[i], map_line, line_nr);
+            send_MAP_ROW_MSG(i, map_line, line_nr);
         }
     }
 }
 
 //6<rindas_nummurs><kartes_rinda>
-void send_MAP_ROW_MSG(struct client * client, char *line, int line_nr)
+void send_MAP_ROW_MSG(int client_nr, char *line, int line_nr)
 {
     char* msg_buffer = NULL;
     connection_t * conn;
 
-    conn = (connection_t *)client -> connection;
+    conn = players[client_nr].connection;
+  //  conn = (connection_t *)client -> connection;
 
     msg_buffer = (char *)malloc(MSG_MAP_ROW_SIZE + 1);
     //6<rindas_nummurs><kartes_rinda>
@@ -495,14 +502,15 @@ void send_MAP_ROW_MSG(struct client * client, char *line, int line_nr)
     free(msg_buffer);
 }
 
-void send_GAME_START_MSG(struct client * client)
+void send_GAME_START_MSG(int client_nr)
 {
     printf("SEND GAMESTART MSG START\n");
     char* msg_buffer = NULL;
     char* list_of_players = NULL;
     connection_t * conn;
 
-    conn = (connection_t *)client -> connection;
+    conn = players[client_nr].connection;
+    //conn = (connection_t *)client -> connection;
 
     msg_buffer = (char *)malloc(MSG_GAME_START_SIZE + (client_count * Ns_PLAYER_NAME_SIZE));
     list_of_players = (char *)malloc(client_count * Ns_PLAYER_NAME_SIZE);
