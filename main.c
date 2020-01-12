@@ -17,9 +17,10 @@ void run();
 void initialize_players();
 void * listen_for_new_players(void * ptr);
 int name_exist(char* name);
-void process_JOIN_GAME_MSG(struct client *client, char *buffer);
+void process_JOIN_GAME_MSG(int client_nr, char *buffer);
+//void process_JOIN_GAME_MSG(struct client *client, char *buffer);
 void * process_new_player_thread(void * ptr);
-void send_LOBBY_INFO_MSG(struct client *client);
+void send_LOBBY_INFO_MSG(int client_nr);
 void register_new_player(connection_t * connection);
 void send_GAME_IN_PROCESS_MSG(connection_t * connection);
 void send_MSG(connection_t * connection, char * msg_buffer);
@@ -37,6 +38,8 @@ void set_games_countdown();
 void send_game_update();
 
 void send_first_GAME_UPDATE_MSG(struct client *client);
+
+void change_smth(struct client *pClient);
 
 int main(int argc, char* argv[])
 {
@@ -169,20 +172,25 @@ void run()
     pthread_create(&thread, 0, listen_for_new_players, NULL);
     pthread_detach(thread);
 
+   //change_smth(&players[1]);
+ //   printf("CHANGEE: %d\n", players[1].active);
+
     while (client_count != 1)
     {
 
     }
 
+    printf("First name : %s\n", players[0].segvards);
+
    // set_games_countdown();
     GAME_IN_PROCESS = 1;
     printf("!!!!!!!");
     start_game();
-    printf("...");
-    printf("here\n");
-    printf("CLIENTCOUNT: \n");
-    printf("!!!!!!!");
-    printf("...");
+//    printf("...");
+//    printf("here\n");
+//    printf("CLIENTCOUNT: \n");
+//    printf("!!!!!!!");
+//    printf("...");
 
 
     for(;;)
@@ -191,6 +199,12 @@ void run()
     }
 
     return;
+}
+
+void change_smth(struct client *pClient) {
+
+    pClient -> active =1;
+
 }
 
 
@@ -228,6 +242,7 @@ void * listen_for_new_players(void * ptr)
             } else {
                 printf("Registering new player...");
                 register_new_player(connection);
+                printf("Client name4  %s\n",players[1].segvards); //TODO
             }
         }
     }
@@ -295,18 +310,20 @@ void set_games_countdown()
 /* start a new thread but do not wait for it */
 void register_new_player(connection_t * connection)
 {
-    struct client * new_player;
+   // struct client * new_player;
     pthread_t thread;
     pthread_t countdown_thread;
-
-    new_player = &players[client_count - 1];
-    new_player -> connection = connection;
 
     printf("Connected to the client with socket descriptor\n");
     printf("Client: on socket %d.\n", connection -> sock_desc);
 
-    pthread_create(&thread, 0, process_new_player_thread, (void *) new_player);
-    pthread_detach(thread);
+    int client_nr = client_count - 1;
+
+    players[client_nr].connection = connection;
+
+    pthread_create(&thread, 0, process_new_player_thread, (void *) client_nr);
+    pthread_join(thread, NULL); // TODO!
+    printf("Client name3 %s\n",players[client_nr].segvards);
 }
 
 void  send_updated_LOBBY_INFO()
@@ -331,7 +348,7 @@ void start_game()
     for (; i <= PLAYERS_COUNT; i++)
     {
         printf("I: %d\n", i);
-        printf("IS ACTIVE: %s %d\n", players[i].segvards, players[i].active );
+        printf("IS ACTIVE: %c %s %d\n",players[i].symbol,  players[i].segvards, players[i].active );
         if (players[i].active == 1)
         {
             printf("PRINT START GAME\n");
@@ -515,7 +532,7 @@ int name_exist(char* name)
     return 0;
 }
 
-void process_JOIN_GAME_MSG(struct client *client, char *buffer)
+void process_JOIN_GAME_MSG(int client_nr, char *buffer)
 {
     printf("process_JOIN_GAME_MSG: START\n");
   //  if (name_exist(buffer) == 1) -- Segfault
@@ -524,12 +541,12 @@ void process_JOIN_GAME_MSG(struct client *client, char *buffer)
   //      return;
   //  }
 
-    client -> active = 1;
-    client -> segvards = (char *)malloc(sizeof(buffer));
+    players[client_nr].active = 1;
+    players[client_nr].segvards = (char *)malloc(sizeof(buffer));
 
-    strcpy(client -> segvards, buffer);
+    strcpy( players[client_nr].segvards, buffer);
 
-    send_LOBBY_INFO_MSG(client);
+    send_LOBBY_INFO_MSG(client_nr);
     printf("process_JOIN_GAME_MSG: END\n");
     client_count++;
 }
@@ -551,11 +568,19 @@ void * process_new_player_thread(void * ptr)
     char * buffer;
     int len = 0;
     connection_t * conn;
-    struct client * client;
     long addr = 0;
 
-    client = (struct client *) ptr; // Getting client from the main thread
-    conn = client -> connection; //  Getting connection from thread
+    printf("Starting new thread for client with socket desc: \n");
+
+    int client_nr = (int)ptr;
+    //players[client_nr];
+   // client = (struct client *) ptr; // Getting client from the main thread
+    conn =  players[client_nr].connection; //  Getting connection from thread
+
+    if(conn == NULL)
+    {
+        printf("Connectionn is NULL\n");
+    }
 
     printf("Starting new thread for client with socket desc: %d\n", conn->sock_desc);
 
@@ -570,13 +595,16 @@ void * process_new_player_thread(void * ptr)
 
             if (buffer[0] == '0') {
                 printf("JOIN GAME message is gotten from client with socket desc: %d\n", conn->sock_desc);
-                process_JOIN_GAME_MSG(client, buffer);
+                process_JOIN_GAME_MSG(client_nr, buffer);//TODO!
+                printf("Client name  %s\n",players[client_nr].segvards);
                 printf("Client with sock desc: %d. Joined Game. Clients count %d. \n", conn->sock_desc, client_count);
             }
-            free(buffer);
+          //  free(buffer);
             printf("Buffer is empty!\n");
         }
     //}
+
+    printf("Client name2  %s\n",players[client_nr].segvards);
 
     printf("Client's thread is over.\n");
    // close(conn->sock_desc);
@@ -585,7 +613,7 @@ void * process_new_player_thread(void * ptr)
     pthread_exit(0);
 }
 
-void send_LOBBY_INFO_MSG(struct client *client)
+void send_LOBBY_INFO_MSG(int client_nr)
 {
     printf("send_LOBBY_INFO_MSG: START\n");
 
@@ -594,10 +622,14 @@ void send_LOBBY_INFO_MSG(struct client *client)
     char* list_of_players = NULL;
     connection_t * conn;
 
-    conn = (connection_t *)client -> connection;
+    conn = (connection_t *)players[client_nr].connection;
 
-    msg_buffer = (char *)malloc(len);
+    printf("connection read,\n");
+
+    msg_buffer = (char *)malloc(1000);
     list_of_players = (char *)malloc(client_count * Ns_PLAYER_NAME_SIZE);
+
+    printf("malloc done\n");
 
     int i = 0;
     char temp[Ns_PLAYER_NAME_SIZE];
@@ -607,13 +639,27 @@ void send_LOBBY_INFO_MSG(struct client *client)
         strcat(list_of_players, temp);
     }
 
-    sprintf(temp, "<%s>", players[client_count - 1].segvards);
+    printf("Players list done\n");
+
+    sprintf(temp, "<%s>", players[client_nr].segvards);
     strcat(list_of_players, temp);
 
-    //"2<%d>{%s}"
-    sprintf(msg_buffer, MSG_LOBBY_INFO, client_count + 1, list_of_players);
+    printf("players list done done\n");
 
-    printf("Message to send: %s, on socket %d\n", msg_buffer, client->connection->sock_desc);
+    //"2<%d>{%s}"
+   sprintf(msg_buffer, MSG_LOBBY_INFO, client_count + 1, list_of_players);
+   // sprintf(msg_buffer, MSG_LOBBY_INFO, client_count + 1, "smth");
+
+    //printf("Message to send: %s, on socket %d\n", msg_buffer, players[client_nr].connection->sock_desc);
+
+    printf("Active: %d Segname %s \n", players[client_nr].active, players[client_nr].segvards);
+
+    if (conn == NULL)
+    {
+        printf("null connection\n");
+    }
+
+    printf("Message to send: %s, on socket %d\n", msg_buffer, conn->sock_desc);
 
     send_MSG(conn, msg_buffer);
 
