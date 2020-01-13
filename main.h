@@ -21,6 +21,14 @@ typedef struct
 
 } position_t;
 
+typedef struct message_t
+{
+    time_t t1;
+    int client_nr;
+    char direction;
+
+} message_t;
+
 typedef struct client
 {
     connection_t * connection;

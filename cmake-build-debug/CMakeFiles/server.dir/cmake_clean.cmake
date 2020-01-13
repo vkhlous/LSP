@@ -1,7 +1,10 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/server.dir/clients_thread.c.o"
-  "CMakeFiles/server.dir/main.c.o"
-  "server"
+  "CMakeFiles/server.dir/clients_thread.c.obj"
+  "CMakeFiles/server.dir/list.c.obj"
+  "CMakeFiles/server.dir/main.c.obj"
+  "libserver.dll.a"
+  "server.exe"
+  "server.exe.manifest"
   "server.pdb"
 )
 

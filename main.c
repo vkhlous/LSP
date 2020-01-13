@@ -9,7 +9,8 @@
 #include "main.h"
 #include "constants.h"
 #include <stdio.h>
-
+#include "list.h"
+#include <time.h>
 
 void process_arg(int argc, char*     []);
 void create_socket();
@@ -51,6 +52,14 @@ void set_players_coordinats();
 
 char * process_income_message(char* buffer);
 
+void start_new_thread_for_each();
+
+void * playing_thread (void * ptr);
+
+void add_message_to_queue(int nr, char *direction);
+
+list * message_queue;
+
 int main(int argc, char* argv[])
 {
 
@@ -59,6 +68,8 @@ int main(int argc, char* argv[])
     create_socket();
 
     run();
+
+  //  void list_free(list *l);
 
     return 0;
 }
@@ -207,7 +218,7 @@ void run()
 //    printf("!!!!!!!");
 //    printf("...");
 
-
+  //  void list_free(list *l);
     for(;;)
     {
 
@@ -397,6 +408,84 @@ void start_game()
     // Send positions to each
     send_game_update();
     // Start new thread for each player.
+    message_queue = list_create();
+    start_new_thread_for_each();
+}
+
+void start_new_thread_for_each() {
+
+    int i = 0;
+    for (; i < PLAYERS_COUNT; i++) {
+        pthread_t thread;
+        pthread_create(&thread, 0, playing_thread, (void *) i);
+        pthread_detach(thread);
+    }
+
+}
+
+void * playing_thread (void * ptr)
+{
+    char * buffer;
+    int len = 0;
+    connection_t * conn;
+    long addr = 0;
+    int res = 0;
+    char* direction = NULL;
+
+    printf("Starting new thread for client with socket desc: \n");
+
+    int client_nr = (int)ptr;
+
+    conn =  players[client_nr].connection; //  Getting connection from thread
+
+    while(GAME_IN_PROCESS == 1)
+    {
+        printf("Waiting for a message...\n");
+        read(conn->sock_desc, &len, sizeof(int));
+
+        if (len > 0) {
+            buffer = (char *) malloc((len + 1) * sizeof(char));
+            buffer[len] = 0;
+            read(conn->sock_desc, buffer, len);
+
+            if (buffer[0] == MSG_MOVE_C)
+            {
+                direction = (char *)malloc(len + 1);
+                direction = strdup(process_income_message(buffer));
+                printf("Direction from client gotten: %s\n", direction);
+                add_message_to_queue(client_nr, direction);
+            }
+
+//            if (buffer[0] == '0') {
+//                printf("Client name  %s\n",players[client_nr].segvards);
+//                printf("Client with sock desc: %d. Joined Game. Clients count %d. \n", conn->sock_desc, client_count);
+//            }
+            free(buffer);
+            printf("Buffer is empty!\n");
+        }
+    }
+    //SEND GAME OVER MSG
+
+    pthread_exit(0);
+}
+
+void add_message_to_queue(int nr, char *direction) {
+
+    printf("ADD MESSAGE TO QUEUE: direction: %s, for client nr: %d\n", direction, nr);
+    time_t rawtime;
+
+    struct message_t * message_to_queue;
+    message_to_queue = NULL;
+
+    message_to_queue = (struct message_t *)malloc(sizeof(message_t));
+
+    time ( &rawtime );
+
+    message_to_queue -> t1 = localtime ( &rawtime );
+    message_to_queue -> client_nr = nr;
+    message_to_queue -> direction = direction[0];
+
+    list_add_element(message_queue, message_to_queue);
 }
 
 void set_players_coordinats() {
@@ -496,6 +585,7 @@ void read_send_game_MAP()
     {
         if (fgets(buffer, MAP_W+1, fp))// MAP_W+1, so the \n also will be read!
         {
+            buffer[MAP_W+1] = '\0';
             send_MAP_line(buffer, line_count);
             add_MAP_line_to_array(buffer, line_count);
             line_count++;
@@ -586,7 +676,7 @@ void send_GAME_START_MSG()
     printf("LIST OF PLAYERS:%s\n", list_of_players);
 
    // 5<spēlētāju_skaits>{<ntā_spēlētāja_segvārds>}<kartes_platums><kartes_augstums>
-    sprintf(msg_buffer, MSG_GAME_START, client_count, list_of_players, MAP_W, MAP_H);
+    sprintf(msg_buffer, MSG_GAME_START, client_count, list_of_players, MAP_H, MAP_W);
 
     printf("Message to send: %s\n", msg_buffer);
 
@@ -807,9 +897,24 @@ char * process_income_message(char *buffer) {
 
     if (message_type == MSG_JOIN_GAME_C)
     {
-        to_return = (char *)malloc(SEGVARDS_SIZE+1);
+        to_return = (char *)malloc(strlen(buffer));
         i = 2; //0<%s> skipping first two chars; starting after <
-        for (; i < SEGVARDS_SIZE; i++)
+        for (; i < strlen(buffer); i++)
+        {
+            if (buffer[i] == '>')
+            {
+                break;
+            }
+            to_return[j] = buffer[i]; // starting from zero
+            j++;
+        }
+        to_return[j] = '\0';
+    }
+    else if (message_type == MSG_MOVE_C)
+    {
+        to_return = (char *)malloc(2);
+        i = 2; //1<%s> skipping first two chars; starting after <
+        for (; i < 2; i++)
         {
             if (buffer[i] == '>')
             {

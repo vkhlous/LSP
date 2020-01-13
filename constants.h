@@ -73,5 +73,13 @@
 
 #define SEGVARDS_SIZE 16
 
+#define MSG_MOVE_C '1'
+#define MOVE_LEFT 'L'
+#define MOVE_RIGHT 'R'
+#define MOVE_DOWN 'D'
+#define MOVE_UP 'U'
+
+
+//1<virziens>
 
 #endif //SERVER_CONSTANTS_H
