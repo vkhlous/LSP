@@ -17,7 +17,7 @@ void run();
 void initialize_players();
 void * listen_for_new_players(void * ptr);
 int name_exist(char* name);
-void process_JOIN_GAME_MSG(int client_nr, char *buffer);
+int process_JOIN_GAME_MSG(int client_nr, char *buffer);
 //void process_JOIN_GAME_MSG(struct client *client, char *buffer);
 void * process_new_player_thread(void * ptr);
 void send_LOBBY_INFO_MSG();
@@ -305,22 +305,22 @@ void set_games_countdown()
 
     if (client_count >= 2 && client_count < 8)
     {
-//        if (COUNTDOWN_STARTED == 0)
-//        {
-//            COUNTDOWN_STARTED = 1;
-//            pthread_create(&countdown_thread, 0, start_countdown, NULL);
-//            pthread_join(countdown_thread, NULL);
-//            COUNTDOWN_STARTED = 0;
-               GAME_IN_PROCESS = 1;
-//        }
-//        else
-//        {
-//            pthread_cancel(countdown_thread);
-//            pthread_create(&countdown_thread, 0, start_countdown, NULL);
-//            pthread_join(countdown_thread, NULL);
-//            COUNTDOWN_STARTED = 0;
-//            GAME_IN_PROCESS = 1;
-//        }
+        if (COUNTDOWN_STARTED == 0)
+        {
+            COUNTDOWN_STARTED = 1;
+            pthread_create(&countdown_thread, 0, start_countdown, NULL);
+            pthread_detach(countdown_thread);
+           // COUNTDOWN_STARTED = 0;
+          //  GAME_IN_PROCESS = 1;
+        }
+        else
+        {
+            pthread_cancel(countdown_thread);
+            pthread_create(&countdown_thread, 0, start_countdown, NULL);
+            pthread_detach(countdown_thread);
+           // COUNTDOWN_STARTED = 0;
+          //  GAME_IN_PROCESS = 1;
+        }
     }
     else if (client_count == 8)
     {
@@ -340,7 +340,7 @@ void register_new_player(connection_t * connection)
     printf("Client: on socket %d.\n", connection -> sock_desc);
 
     if (client_count != 0) {
-        client_nr = client_count - 1;
+        client_nr = client_count;
     } else {
         client_nr = 0;
     }
@@ -387,10 +387,12 @@ void start_game()
     // Send map to each
     read_send_game_MAP();
 
+    printf("Gamemap: %c\n", game_map[1][0]);
+
+    printf("Game map: %d\n", game_map[30][120]);
+
     print_game_map();
-
     set_players_coordinats();
-
     print_game_map();
 
     // Send positions to each
@@ -402,8 +404,10 @@ void set_players_coordinats() {
     int i = 0;
     for (; i < PLAYERS_COUNT; i++)
     {
+        printf("Set for active client: %c, %d. Coordinats: x - %d; y - %d\n", players[i].symbol, players[i].active, players[i].x, players[i].y);
         if (players[i].active == 1)
         {
+           // printf("Game map: %d, {%d}{%d}\n", game_map[30][120], players[i].y, players[i].x);
             game_map[players[i].y][players[i].x] = players[i].symbol;
         }
     }
@@ -411,11 +415,13 @@ void set_players_coordinats() {
 
 void print_game_map() {
     int i = 0;
-    int j = 0;
+
     printf("************************************************\n");
     for(; i < MAP_H; i++)
     {
-        for (; j < MAP_W; j ++)
+        printf("{%d}",i);
+        int j = 0;
+        for (; j < MAP_W; j++)
         {
             printf("%c", game_map[i][j]);
         }
@@ -503,14 +509,21 @@ void read_send_game_MAP()
 void add_MAP_line_to_array(char *map_line, int line_nr)
 {
     int i = 0;
-    for (; i < MAP_W; i++)
+    int j = 0;
+    for (; i < MAP_W-1; i++)
     {
-        printf("Put char %d into array cell {%d}{%d}\n", map_line[i], line_nr, i);
+      //  printf("Put char %d into array cell {%d}{%d}\n", map_line[i], line_nr, i);
         game_map[line_nr][i] = map_line[i];
     }
 
-    printf("Last i:%d\n", i);
-    printf("Last char: %d\n", game_map[line_nr][MAP_W-1]); // MAP_W - 1, cuz starting from 0.
+    printf("{%d}", line_nr);
+    for (; j < MAP_W; j ++)
+    {
+        printf("%c", game_map[line_nr][j]);
+    }
+
+   // printf("Last i:%d\n", i);
+   // printf("Last char for line nr - %d: %d\n", line_nr,  game_map[line_nr][MAP_W-2]); // MAP_W - 1, cuz starting from 0.
 }
 
 void send_MAP_line(char *map_line, int line_nr)
@@ -591,34 +604,38 @@ void send_GAME_START_MSG()
 
 void * start_countdown(void * ptr)
 {
+    
 
 }
 
 int name_exist(char* name)
 {
-    int i = 1;
-    for (; i <= PLAYERS_COUNT; i++)
-    {
-        if (strcmp(name, players[i].segvards) == 0)
-        {
-            return 1;
+    printf("Checkif name exist '%s'\n", name);
+    int i = 0;
+    for (; i < PLAYERS_COUNT; i++) {
+        if (players[i].active == 1) {
+            printf("CHECK: '%s', '%s'\n", name, players[i].segvards);
+            if (strcmp(name, players[i].segvards) == 0) {
+                return 1;
+            }
         }
     }
     return 0;
 }
 
-void process_JOIN_GAME_MSG(int client_nr, char *buffer)
+int process_JOIN_GAME_MSG(int client_nr, char *buffer)
 {
     printf("process_JOIN_GAME_MSG: START\n");
     char* seg_name = NULL;
-  //  seg_name = (char*)malloc(sizeof(process_income_message(buffer)));
-    seg_name = process_income_message(buffer);
+    seg_name = malloc(SEGVARDS_SIZE+1);
+    seg_name = strdup(process_income_message(buffer));
+    printf("seg name read: %s\n", seg_name);
 
     if (name_exist(seg_name) == 1) //Segfault
     {
         printf("USERNAME TAKEN: %s\n", seg_name);
         send_USERNAME_TAKEN_MSG(players[client_nr].connection);
-        return;
+        return 0;
     }
 
     players[client_nr].active = 1;
@@ -630,6 +647,7 @@ void process_JOIN_GAME_MSG(int client_nr, char *buffer)
     send_LOBBY_INFO_MSG(client_nr);
     printf("process_JOIN_GAME_MSG: END\n");
     client_count++;
+    return 1;
 }
 
 void send_USERNAME_TAKEN_MSG(connection_t * connection)
@@ -650,6 +668,7 @@ void * process_new_player_thread(void * ptr)
     int len = 0;
     connection_t * conn;
     long addr = 0;
+    int res = 0;
 
     printf("Starting new thread for client with socket desc: \n");
 
@@ -676,7 +695,18 @@ void * process_new_player_thread(void * ptr)
 
             if (buffer[0] == '0') {
                 printf("JOIN GAME message is gotten from client with socket desc: %d\n", conn->sock_desc);
-                process_JOIN_GAME_MSG(client_nr, buffer);//TODO!
+                res = process_JOIN_GAME_MSG(client_nr, buffer);//TODO!
+                if (res == 0)
+                {
+                    players[client_nr].segvards = NULL;
+                    players[client_nr].connection = NULL;
+                    players[client_nr].active = 0;
+                    printf("Client's thread is over.\n");
+                    close(conn->sock_desc);
+                    free(conn);
+                    printf("\n");
+                    pthread_exit(0);
+                }
                 printf("Client name  %s\n",players[client_nr].segvards);
                 printf("Client with sock desc: %d. Joined Game. Clients count %d. \n", conn->sock_desc, client_count);
             }
@@ -752,10 +782,12 @@ void send_LOBBY_INFO_MSG()
 }
 
 char * process_income_message(char *buffer) {
-    int message_type = buffer[0];
+    char message_type = buffer[0];
     char *to_return = NULL;
     int i = 0;
     int j = 0;
+
+    printf("Income message: %s\n", buffer);
 
     if (message_type == MSG_JOIN_GAME_C)
     {
@@ -773,5 +805,6 @@ char * process_income_message(char *buffer) {
         to_return[SEGVARDS_SIZE] = '\0';
     }
 
+    printf("TO RETURN %s\n", to_return);
     return to_return;
 }

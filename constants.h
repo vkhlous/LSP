@@ -15,8 +15,8 @@
 
 #define B_CLIENT_CHAR 'B'
 #define B_CLIENT_NR 2
-#define B_CLIENT_X 30
-#define B_CLIENT_Y 120
+#define B_CLIENT_X 119
+#define B_CLIENT_Y 29
 
 #define C_CLIENT_CHAR 'C'
 #define C_CLIENT_NR 3
@@ -69,7 +69,7 @@
 #define MSG_MAP_ROW "6<%d><%s>"
 #define MSG_MAP_ROW_SIZE 9+MAP_W
 
-#define MSG_JOIN_GAME_C 0
+#define MSG_JOIN_GAME_C '0'
 
 #define SEGVARDS_SIZE 16
 
