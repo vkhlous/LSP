@@ -46,6 +46,6 @@ struct client players[8];
 
 int GAME_IN_PROCESS = 0;
 
-int game_map[MAP_H][MAP_W];
+char game_map[MAP_H][MAP_W];
 
 #endif //SERVER_MAIN_H

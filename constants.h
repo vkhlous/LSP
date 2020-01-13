@@ -6,7 +6,7 @@
 #define SERVER_CONSTANTS_H
 
 #define MAP_H 30
-#define MAP_W 30
+#define MAP_W 122
 
 #define A_CLIENT_CHAR 'A'
 #define A_CLIENT_NR 1

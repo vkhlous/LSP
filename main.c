@@ -177,7 +177,7 @@ void run()
    //change_smth(&players[1]);
  //   printf("CHANGEE: %d\n", players[1].active);
 
-    while (client_count != 1)
+    while (client_count !=1)
     {
 
     }
@@ -282,7 +282,7 @@ void send_MSG(connection_t * connection, char * msg_buffer)
 {
     int len;
 
-    printf("send_MSG START");
+    printf("send_MSG START\N");
     printf("send_MSG: Message to send: %s on socket\n", msg_buffer, connection->sock_desc);
 
     len = strlen(msg_buffer);
@@ -342,11 +342,11 @@ void register_new_player(connection_t * connection)
     pthread_create(&thread, 0, process_new_player_thread, (void *) client_nr);
     pthread_join(thread, NULL); // TODO!
     printf("Client name3 %s\n",players[client_nr].segvards);
-    players[0].active = 1;
-    players[0].segvards = (char *)malloc(sizeof("My name"));
-
-    //strcpy( players[client_nr].segvards, buffer);
-    players[0].segvards = strdup("My name");
+//    players[0].active = 1;
+//    players[0].segvards = (char *)malloc(sizeof("My name"));
+//
+//    //strcpy( players[client_nr].segvards, buffer);
+//    players[0].segvards = strdup("My name");
 }
 
 void  send_updated_LOBBY_INFO()
@@ -357,7 +357,7 @@ void  send_updated_LOBBY_INFO()
     {
         if (players[i].active == 1)
         {
-            send_LOBBY_INFO_MSG(&players[i]);
+            send_LOBBY_INFO_MSG(i);
         }
     }
     printf("Updates LOBBY_INFO_MSG sent to each active player!\n");
@@ -368,7 +368,7 @@ void start_game()
     printf("Starting game!\n");
 
     int i = 0;
-    for (; i <= PLAYERS_COUNT; i++)
+    for (; i < PLAYERS_COUNT; i++)
     {
         printf("I: %d\n", i);
         printf("IS ACTIVE: %c %s %d\n",players[i].symbol,  players[i].segvards, players[i].active );
@@ -380,7 +380,7 @@ void start_game()
     }
 
     // Send map to each
- //   read_send_game_MAP();
+    read_send_game_MAP();
 
     // Send positions to each
  //   send_game_update();
@@ -450,11 +450,12 @@ void read_send_game_MAP()
 
     while(!feof (fp))
     {
-        if (fgets(buffer, MAP_W, fp))
+        if (fgets(buffer, MAP_W+1, fp))
         {
+          //  printf("%s", buffer);
             send_MAP_line(buffer, line_count);
             add_MAP_line_to_array(buffer, line_count);
-            printf("%s", buffer);
+          // printf("%s", buffer);
             line_count++;
         }
     }
@@ -465,10 +466,15 @@ void read_send_game_MAP()
 void add_MAP_line_to_array(char *map_line, int line_nr)
 {
     int i = 0;
+   // printf("Filling array's line : %s\n", map_line);
     for (; i < MAP_W; i++)
     {
+        printf("Put char %d into array cell {%d}{%d}\n", map_line[i], line_nr, i);
         game_map[line_nr][i] = map_line[i];
     }
+
+    printf("Last i:%d\n", i);
+    printf("Last char: %d\n", game_map[line_nr][MAP_W-1]);
 }
 
 void send_MAP_line(char *map_line, int line_nr)
