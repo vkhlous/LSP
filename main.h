@@ -35,6 +35,7 @@ typedef struct client
     char* segvards;
     char symbol;
     int active; // 1 - active; 0- non active
+    int player_updated;
     int points;
     int x;
     int y;

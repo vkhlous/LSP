@@ -35,7 +35,7 @@ void send_MAP_ROW_MSG(char *line, int line_nr);
 void send_MAP_line(char *map_line, int line_nr);
 void add_MAP_line_to_array(char *map_line, int line_nr);
 void set_games_countdown();
-
+void * updating_thread(void * ptr);
 void send_game_update();
 
 void send_first_GAME_UPDATE_MSG();
@@ -58,7 +58,19 @@ void * playing_thread (void * ptr);
 
 void add_message_to_queue(int nr, char *direction);
 
+void start_updating_thread();
+
+void process_gotten_updates();
+
+int message_processing(list_item * ptr);
+
+void send_GAME_UPDATE_MSG();
+
+void set_players_not_updated();
+
 list * message_queue;
+
+
 
 int main(int argc, char* argv[])
 {
@@ -410,10 +422,154 @@ void start_game()
     // Start new thread for each player.
     message_queue = list_create();
     start_new_thread_for_each();
+    start_updating_thread();
 }
 
-void start_new_thread_for_each() {
+void start_updating_thread() {
+    pthread_t thread;
+    pthread_create(&thread, 0, updating_thread, NULL);
+    pthread_detach(thread);
+}
 
+void * updating_thread(void * ptr)
+{
+    while(GAME_IN_PROCESS)
+    {
+        sleep(15);
+        process_gotten_updates();
+        set_players_not_updated();
+    }
+}
+
+void set_players_not_updated() {
+    int i = 0;
+    for (; i < PLAYERS_COUNT; i++)
+    {
+        if (players[i].active == 1)
+        {
+            players[i].player_updated = 0;
+        }
+    }
+}
+
+void process_gotten_updates()
+{
+    if (message_queue != NULL)
+    {
+        list_each_element(message_queue, message_processing);
+        send_GAME_UPDATE_MSG();
+    }
+}
+
+void send_GAME_UPDATE_MSG() {
+    char* msg_buffer = NULL;
+    char* list_of_players_updates = NULL;
+
+    msg_buffer = (char *)malloc(MSG_GAME_START_SIZE + (client_count * Ns_PLAYER_UPDATE_SIZE) + (client_count * Ns_FOOD_UPDATE_SIZE));
+    list_of_players_updates = (char *)malloc(client_count * Ns_PLAYER_UPDATE_SIZE);
+
+    /////////////////////////////////
+    int i = 0;
+    char temp[Ns_PLAYER_UPDATE_SIZE];
+    for (; i < client_count - 1; i++)
+    {
+        sprintf(temp, Ns_PLAYER_UPDATE, players[i].x, players[i].y, players[i].points);
+        strcat(list_of_players_updates, temp);
+    }
+
+    sprintf(temp, "<%d><%d><%d>", players[i].x, players[i].y, players[i].points);
+    strcat(list_of_players_updates, temp);
+    //////////////////////////////////
+    //"7<%d>{%s}%d{%s}"
+    sprintf(msg_buffer, MSG_GAME_UPDATE , client_count, list_of_players_updates, 0, NULL);
+
+    printf("Message to send: %s\n", msg_buffer);
+
+    send_MSG_TO_ALL_ACTIVE(msg_buffer);
+
+    free(msg_buffer);
+    free(list_of_players_updates);
+}
+
+int message_processing(list_item * ptr)
+{
+    struct message_t * message = (struct message_t *)ptr;
+    int x;
+    int y;
+    int current_char = 1;
+
+    if (message == NULL)
+    {
+        printf("Message to process is NULL.");
+        return 0;
+    }
+        if (players[message->client_nr].active == 1 && players[message->client_nr].player_updated == 0) {
+            x = players[message->client_nr].x;
+            y = players[message->client_nr].y;
+            if (message->direction == MOVE_LEFT)
+            {
+                current_char = game_map[y][x-1];
+            }
+            else if (message->direction == MOVE_DOWN)
+            {
+                current_char = game_map[y-1][x];
+            }
+            else if (message->direction == MOVE_RIGHT)
+            {
+                current_char = game_map[y][x+1];
+            }
+            else if (message->direction == MOVE_UP)
+            {
+                current_char = game_map[y+1][x];
+            }
+
+            if (current_char != 1) {
+                if (current_char == 43 || current_char == 45 || current_char == 124) {
+                    printf("Wall. Player will not be moved.");
+                    players[message->client_nr].player_updated = 1;
+                }
+                else if (current_char >= 'A' && current_char <= 'H')
+                {
+                        if (players[current_char - 'A'].active == 1)
+                        {
+                            if (players[current_char - 'A'].points < players[message->client_nr].points)
+                            {
+                                printf("Other player is eaten.");
+                                players[message->client_nr].points += players[current_char - 'A'].points;
+                                players[current_char - 'A'].active = 0;
+                                players[current_char - 'A'].points = 0;
+                                game_map[players[current_char - 'A'].y][players[current_char - 'A'].x] = players[message->client_nr].symbol;
+                            }
+                            else if (players[current_char - 'A'].points > players[message->client_nr].points)
+                            {
+                                printf("Player is eaten.");
+                                players[current_char - 'A'].points += players[message->client_nr].points;
+                                players[message->client_nr].active = 0;
+                                players[message->client_nr].points = 0;
+                                game_map[players[current_char - 'A'].y][players[current_char - 'A'].x] = players[current_char - 'A'].symbol;
+                            }
+                            else if (players[current_char - 'A'].points == players[message->client_nr].points)
+                            {
+                                printf("Other player with the same points count. Player will not be moved.");
+                            }
+                        }
+
+                        players[message->client_nr].player_updated = 1;
+                } else if (current_char == 32) {
+                    printf("Players position is updated.");
+                    players[message->client_nr].x = x;
+                    players[message->client_nr].y = y;
+                    game_map[y][x - 1] = players[message->client_nr].symbol;
+                    players[message->client_nr].player_updated = 1;
+                }
+            }
+
+    }
+    return 0;
+}
+
+void start_new_thread_for_each()
+{
     int i = 0;
     for (; i < PLAYERS_COUNT; i++) {
         pthread_t thread;
@@ -446,7 +602,7 @@ void * playing_thread (void * ptr)
         if (len > 0) {
             buffer = (char *) malloc((len + 1) * sizeof(char));
             buffer[len] = 0;
-            read(conn->sock_desc, buffer, len);
+            read(conn->sock_desc, buffer, len) ;
 
             if (buffer[0] == MSG_MOVE_C)
             {
